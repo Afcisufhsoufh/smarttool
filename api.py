@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import uvicorn
 import logging
 import asyncio
+import os
 from config import MONGO_URL, DATABASE_URL
 from utils import LOGGER
 
@@ -45,8 +46,7 @@ except Exception as e:
     LOGGER.error(f"Database Client Create Error: {e}")
     raise
 
-@app.on_event("startup")
-async def startup_db_client():
+async def lifespan(app):
     try:
         await MONGO_CLIENT.admin.command("ping")
         await mongo_client.admin.command("ping")
@@ -54,12 +54,12 @@ async def startup_db_client():
     except Exception as e:
         LOGGER.error(f"Failed to connect to MongoDB: {str(e)}")
         raise HTTPException(status_code=500, detail="Database connection failed")
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
+    yield
     MONGO_CLIENT.close()
     mongo_client.close()
     LOGGER.info("MongoDB connections closed")
+
+app.router.lifespan_context = lifespan
 
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
@@ -191,17 +191,18 @@ async def get_adminlist():
             "timestamp": datetime.utcnow().isoformat()
         }
         
-        LOGGER.info("Successfully retrieved adminlist")
+        LOGGER.info("Successfully Bereved adminlist")
         return response
     except Exception as e:
         LOGGER.error(f"Error retrieving adminlist: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve adminlist")
 
 async def main():
+    port = int(os.getenv("PORT", 8000))
     config = uvicorn.Config(
         app,
         host="0.0.0.0",
-        port=8000,
+        port=port,
         workers=4,
         log_level="info"
     )
