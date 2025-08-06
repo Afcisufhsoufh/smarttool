@@ -7,6 +7,7 @@ import uvicorn
 import logging
 import asyncio
 import os
+from contextlib import asynccontextmanager
 from config import MONGO_URL, DATABASE_URL
 from utils import LOGGER
 
@@ -46,6 +47,7 @@ except Exception as e:
     LOGGER.error(f"Database Client Create Error: {e}")
     raise
 
+@asynccontextmanager
 async def lifespan(app):
     try:
         await MONGO_CLIENT.admin.command("ping")
@@ -59,7 +61,7 @@ async def lifespan(app):
     mongo_client.close()
     LOGGER.info("MongoDB connections closed")
 
-app.router.lifespan_context = lifespan
+app.lifespan = lifespan
 
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
@@ -191,7 +193,7 @@ async def get_adminlist():
             "timestamp": datetime.utcnow().isoformat()
         }
         
-        LOGGER.info("Successfully Bereved adminlist")
+        LOGGER.info("Successfully retrieved adminlist")
         return response
     except Exception as e:
         LOGGER.error(f"Error retrieving adminlist: {str(e)}")
